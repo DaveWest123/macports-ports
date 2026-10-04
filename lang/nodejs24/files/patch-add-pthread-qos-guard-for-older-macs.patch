@@ -4,7 +4,7 @@
    SetThreadName(thread->name());
  #if V8_OS_DARWIN
    switch (thread->priority()) {
-+#ifndef NOT_ON_BROSEMITE_OR_LATER
++#ifndef NOT_ON_YOSEMITE_OR_LATER
      case Thread::Priority::kBestEffort:
        pthread_set_qos_class_self_np(QOS_CLASS_BACKGROUND, 0);
        break;
@@ -22,7 +22,7 @@
  
    v8::V8::InitializeICUDefaultLocation(argv[0], options.icu_data_file);
  
-+#ifndef NOT_ON_BROSEMITE_OR_LATER
++#ifndef NOT_ON_YOSEMITE_OR_LATER
  #ifdef V8_OS_DARWIN
    if (options.apply_priority) {
      struct task_category_policy category = {.role =
@@ -41,7 +41,7 @@
  
      if (old_state.IsRunning()) {
 -#if V8_OS_DARWIN
-+#if V8_OS_DARWIN && !NOT_ON_BROSEMITE_OR_LATER
++#if V8_OS_DARWIN && !NOT_ON_YOSEMITE_OR_LATER
        pthread_override_t qos_override = nullptr;
  
        if (v8_flags.safepoint_bump_qos_class) {
@@ -50,7 +50,7 @@
      cv_stopped_.Wait(&mutex_);
    }
 -#if V8_OS_DARWIN
-+#if V8_OS_DARWIN && !NOT_ON_BROSEMITE_OR_LATER
++#if V8_OS_DARWIN && !NOT_ON_YOSEMITE_OR_LATER
    if (v8_flags.safepoint_bump_qos_class) {
      for (auto& running_local_heap : running_local_heaps) {
        CHECK_EQ(
@@ -61,7 +61,7 @@
    struct RunningLocalHeap {
      LocalHeap* local_heap;
  #if V8_OS_DARWIN
-+#ifndef NOT_ON_BROSEMITE_OR_LATER
++#ifndef NOT_ON_YOSEMITE_OR_LATER
      pthread_override_t qos_override;
  #endif
 +#endif
