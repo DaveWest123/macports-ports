@@ -118,6 +118,7 @@ destroot {
     } else {
         #there is a libc++/libunwind subdirectory in libexec/llvm-${version}/lib that doesn't exist on older releases
         xinstall -m 0644 -W ${prefix}/libexec/llvm-${clangversion}/lib/libc++ libc++.a libc++abi.a libc++experimental.a libunwind.a ${destroot}${prefix}/lib/libcxx
+        xinstall -m 0644 -W ${prefix}/libexec/llvm-${clangversion}/lib/libunwind libunwind.a ${destroot}${prefix}/lib/libcxx
     }
 }
 

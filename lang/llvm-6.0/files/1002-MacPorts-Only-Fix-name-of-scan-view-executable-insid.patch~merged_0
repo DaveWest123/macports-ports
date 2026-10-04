@@ -1,0 +1,58 @@
+<<<<<<< HEAD
+<<<<<<< HEAD:lang/llvm-6.0/files/1002-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch
+From 1f5179f2a269cf8e6c3ec4a9fb0e360dd1e30954 Mon Sep 17 00:00:00 2001
+=======
+From f688609c4ef2bddecc851efae71dc3dd3154ff97 Mon Sep 17 00:00:00 2001
+>>>>>>> a5252e107ebd76deacd3f934206177a111bad9a8:lang/llvm-7.0/files/1002-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch
+=======
+From 1f5179f2a269cf8e6c3ec4a9fb0e360dd1e30954 Mon Sep 17 00:00:00 2001
+>>>>>>> a5252e107ebd76deacd3f934206177a111bad9a8
+From: Jeremy Huddleston Sequoia <jeremyhu@apple.com>
+Date: Sat, 17 Jan 2015 17:55:27 -0800
+Subject: [PATCH 1002/1008] MacPorts Only: Fix name of scan-view executable
+ inside scan-build
+
+http://trac.macports.org/ticket/35006
+
+Signed-off-by: Jeremy Huddleston Sequoia <jeremyhu@apple.com>
+---
+ tools/scan-build/bin/scan-build | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git llvm_master/tools/clang/tools/scan-build/bin/scan-build macports_master/tools/clang/tools/scan-build/bin/scan-build
+<<<<<<< HEAD
+<<<<<<< HEAD:lang/llvm-6.0/files/1002-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch
+=======
+>>>>>>> a5252e107ebd76deacd3f934206177a111bad9a8
+index cbf3bf3d6f..f7fad16bba 100755
+--- llvm_master/tools/clang/tools/scan-build/bin/scan-build
++++ macports_master/tools/clang/tools/scan-build/bin/scan-build
+@@ -1855,6 +1855,8 @@ if (defined $Options{OutputFormat}) {
+<<<<<<< HEAD
+=======
+index c50f900cc4..17c0e6821b 100755
+--- llvm_master/tools/clang/tools/scan-build/bin/scan-build
++++ macports_master/tools/clang/tools/scan-build/bin/scan-build
+@@ -1871,6 +1871,8 @@ if (defined $Options{OutputFormat}) {
+>>>>>>> a5252e107ebd76deacd3f934206177a111bad9a8:lang/llvm-7.0/files/1002-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch
+=======
+>>>>>>> a5252e107ebd76deacd3f934206177a111bad9a8
+       Diag "Analysis run complete.\n";
+       Diag "Viewing analysis results in '$Options{OutputDir}' using scan-view.\n";
+       my $ScanView = Cwd::realpath("$RealBin/scan-view");
++      if (! -x $ScanView) { $ScanView = Cwd::realpath("$RealBin/bin/scan-view"); }
++      if (! -x $ScanView) { $ScanView = Cwd::realpath("$RealBin/../scan-view/scan-view"); }
+       if (! -x $ScanView) { $ScanView = "scan-view"; }
+       if (! -x $ScanView) { $ScanView = Cwd::realpath("$RealBin/../../scan-view/bin/scan-view"); }
+       exec $ScanView, "$Options{OutputDir}";
+-- 
+<<<<<<< HEAD
+<<<<<<< HEAD:lang/llvm-6.0/files/1002-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch
+2.13.3
+=======
+2.17.1 (Apple Git-112)
+>>>>>>> a5252e107ebd76deacd3f934206177a111bad9a8:lang/llvm-7.0/files/1002-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch
+=======
+2.13.3
+>>>>>>> a5252e107ebd76deacd3f934206177a111bad9a8
+
