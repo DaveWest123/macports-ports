@@ -58,7 +58,7 @@ if {${os.major} >= 17 || ${os.platform} ne "darwin"} {
     compiler.fallback   clang macports-clang-16
 }
 #from 10.6(i386,x86_64) to 10.14 (x86_64), clang-11 works well
-#and so occams razor applies.
+#all the way up to llvm-23, so occams razor applies
 if {${configure.build_arch} in [list i386, x86_64]} {
     if {${os.platform} eq "darwin" && ${os.major} < 19} {
         compiler.fallback   macports-clang-11
@@ -158,13 +158,6 @@ if {${os.platform} eq "darwin" && ${os.major} < 16} {
     # Avoid attempts to use 'clonefile'
     # llvm/lib/Support/Unix/Path.inc:1476:10: error: use of undeclared identifier 'clonefile'
     patchfiles-append  0031-Avoid-Use-Of-Clonefile.patch
-}
-
-if {${os.platform} eq "darwin" && ${os.major} < 16} {
-    # revert the introduction of the "automatic shared library resolver" introduced here:
-    #       https://github.com/llvm/llvm-project/pull/165360
-    #    since it uses shared_mutex, which is only available on 10.12 and higher.
-    patchfiles-append 0028-remove_automatic_shared_resolver_for_el_capitan_and_lower.patch
 }
 
 if {${os.platform} eq "darwin" && ${os.major} < 14} {
@@ -393,6 +386,16 @@ if { ${subport} eq "clang-${llvm_version}" || ${subport} eq "flang-${llvm_versio
                 reinplace "s|(APPLE OR CYGWIN)|CYGWIN|g" ${workpath}/${distname}/libcxxabi/src/CMakeLists.txt
             }
         }
+        # unless we're building without the static analyser (-analyser), we will need clang-19
+        # introduced from this push, to have shared_mutex properly picked up and used. 
+        if {[variant_isset analyzer]} {
+            # revert the introduction of the "automatic shared library resolver" introduced here:
+            #       https://github.com/llvm/llvm-project/pull/165360
+            # if we are building without the analyser, then we can build up to clang-23 with
+            # macports-clang-11 with the patch below. in other words, analyser builds will
+            # never hit this condition
+            patchfiles-append 0028-remove_automatic_shared_resolver_for_el_capitan_and_lower.patch
+        }
     }
 }
 
@@ -603,6 +606,20 @@ if {${subport} eq "clang-${llvm_version}"} {
     # Avoid requiring a bootstrap version of perl5 on 10.6.
     if {${os.major} >= 11} {
         default_variants    +analyzer
+    }
+
+    #from 10.6(i386,x86_64) to 10.14 (x86_64), clang-11 works well
+    #but is only able to build up to clang-20 with +analyzer.
+    #10.6 doesn't have any issues building up to clang-23 with mp-clang-11
+    #since the analyzer is disabled by default. however, it experiences
+    #clang-16/17 also fail. however the (now working) clang-19 builds properly.
+    #so we use that for clang-21+
+    if {${configure.build_arch} in [list i386, x86_64]} {
+        if {${os.platform} eq "darwin" && ${os.major} < 19} {
+            if {[variant_isset analyzer]} {
+                compiler.fallback   macports-clang-19
+            }
+        }
     }
 
     variant libstdcxx description {-stdlib=libstdc++_macports searches for MacPorts libstdc++} {
