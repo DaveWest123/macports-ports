@@ -1,6 +1,21 @@
 diff -ur ./clang/lib/DirectoryWatcher/mac/DirectoryWatcher-mac.cpp ./clang/lib/DirectoryWatcher/mac/DirectoryWatcher-mac.cpp
 --- ./clang/lib/DirectoryWatcher/mac/DirectoryWatcher-mac.cpp	2025-07-04 20:35:42.000000000 -0600
 +++ ./clang/lib/DirectoryWatcher/mac/DirectoryWatcher-mac.cpp	2025-07-05 07:40:22.000000000 -0600
+@@ -13,7 +13,14 @@
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/Support/Error.h"
+ #include "llvm/Support/Path.h"
++#define _SECURITY_SECKEYCHAIN_H_
++//on certain macs the inclusion of coreservices will bring drag in
++//Security.h which will trigger a compilation error 
++//"expression is not an integral constant expression"
++//so we define the macro to avoid including the header, as it's
++//not needed for this source file.
+ #include <CoreServices/CoreServices.h>
++#undef _SECURITY_SECKEYCHAIN_H_
+ #include <TargetConditionals.h>
+ 
+ using namespace llvm;
 @@ -98,6 +98,7 @@
  };
  } // namespace

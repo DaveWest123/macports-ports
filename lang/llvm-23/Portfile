@@ -358,44 +358,56 @@ if { ${subport} eq "clang-${llvm_version}" || ${subport} eq "flang-${llvm_versio
         configure.args-append    -DCLANGD_BUILD_XPC=OFF
     }
 
-   if {${os.platform} eq "darwin" && ${os.major} < 16} {
-       # 1. Remove version check that prohibits configure for 10.6
-       # 2. Appropriately modify DirectoryWatcher so that:
-       #     - neither os/log.h (10.12 or higher), or;
-       #     - pthread/introspection.h are included (10.12 and higher)
-       #     - FSEventStreamEventFlags are only called on 10.7 and higher
-       # 3. modify libunwind.cpp so that the mach_header is either 32 or 64 bit, and uses the
-       #    older getsectbyheadername, where appropriate.
-       # 4. prevent the use of reexported_symbols_list in libcxx/src/CMakeLists.abi unless
-       #    the minimum sdk is 10.7 or higher
-       patchfiles-append 0026-changes_for_el_capitan_and_lower.patch
-
-       if {${os.platform} eq "darwin" && ${os.major} < 11} {
-           patchfiles-append 0027-modifications-for-snow-leopard.patch
-           post-configure {
-               #we need a way to shoehorn in this string replacement, because the build system inserts no
-               #version number and compilation will fail.
-               reinplace "s|[quotemeta ${build.dir}/runtimes/runtimes-stamps/runtimes-configure]|${build.dir}/runtimes/runtimes-stamps/runtimes-configure \\&\\& \
-               sed -i '' 's:-current_version  /usr/lib/libSystem.B.dylib:-current_version 1.0.0 /usr/lib/libSystem.B.dylib:g' ${build.dir}/runtimes/runtimes-bins/build.ninja|g" ${build.dir}/build.ninja
-               #we remove "APPLE" from the check on cxa_thread_atexit to ensure we can
-               #rely on the implementation provided by clang for local threads on 10.6.
-               #we also remove the weak symbol check in cxa_thread_atexit.cc itself because
-               #jeremy's clang-11 build has it in libc++, which will make the check resolve
-               #to true, which we don't want
-               reinplace "s|(APPLE OR CYGWIN)|CYGWIN|g" ${workpath}/${distname}/libcxxabi/src/CMakeLists.txt
-           }
-       }
-       # unless we're building without the static analyser (-analyser), we will need clang-19
-       # introduced from this push, to have shared_mutex properly picked up and used.
-       if {[variant_isset analyzer]} {
-           # revert the introduction of the "automatic shared library resolver" introduced here:
-           #       https://github.com/llvm/llvm-project/pull/165360
-           # if we are building without the analyser, then we can build up to clang-23 with
-           # macports-clang-11 with the patch below. in other words, analyser builds will
-           # never hit this condition
-           patchfiles-append 0028-remove_automatic_shared_resolver_for_el_capitan_and_lower.patch
-       }
-   }
+    if {${os.platform} eq "darwin" && ${os.major} < 16} {
+        # 1. Remove version check that prohibits configure for 10.6
+        # 2. Appropriately modify DirectoryWatcher so that:
+        #     - neither os/log.h (10.12 or higher), or;
+        #     - pthread/introspection.h are included (10.12 and higher)
+        #     - FSEventStreamEventFlags are only called on 10.7 and higher
+        # 3. modify libunwind.cpp so that the mach_header is either 32 or 64 bit, and uses the
+        #    older getsectbyheadername, where appropriate.
+        # 4. prevent the use of reexported_symbols_list in libcxx/src/CMakeLists.abi unless
+        #    the minimum sdk is 10.7 or higher
+        # 5. since 10.6 doesn't have libc++, it doesn't seem to have the build issues
+        #    that 10.7+ experience.
+        #       - on 10.7+ use _LIBCPP_DISABLE_AVAILABILITY_CHECK because jeremy's clang-11
+        #         will have the symbols we need, we don't want to trip the APPUL runtime
+        #         checks
+        patchfiles-append           0026-changes_for_el_capitan_and_lower.patch
+        if {${os.platform} eq "darwin" && ${os.major} < 11} {
+            patchfiles-append 0027-modifications-for-snow-leopard.patch
+            post-configure {
+                #we need a way to shoehorn in this string replacement, because the build system inserts no
+                #version number and compilation will fail.
+                reinplace "s|[quotemeta ${build.dir}/runtimes/runtimes-stamps/runtimes-configure]|${build.dir}/runtimes/runtimes-stamps/runtimes-configure \\&\\& \
+                sed -i '' 's:-current_version  /usr/lib/libSystem.B.dylib:-current_version 1.0.0 /usr/lib/libSystem.B.dylib:g' ${build.dir}/runtimes/runtimes-bins/build.ninja|g" ${build.dir}/build.ninja
+                #we remove "APPLE" from the check on cxa_thread_atexit to ensure we can
+                #rely on the implementation provided by clang for local threads on 10.6.
+                #we also remove the weak symbol check in cxa_thread_atexit.cc itself because
+                #jeremy's clang-11 build has it in libc++, which will make the check resolve
+                #to true, which we don't want
+                reinplace "s|(APPLE OR CYGWIN)|CYGWIN|g" ${workpath}/${distname}/libcxxabi/src/CMakeLists.txt
+            }
+        } else {
+            # for 10.7 we need to explicitly link the static libraries of jeremy's clang-11 to ensure all
+            # symbols get baked in. we also need to avoid linking a single symbol (___muloti4) to avoid
+            # linker errors.
+            configure.args-append   -DCMAKE_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY" \
+                                    -DLIBCXX_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY" \
+                                    -DLIBCXXABI_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY"
+            post-configure {
+                set clangversion [lindex [split ${configure.compiler} -] 2]
+                set cxxsubdir ""
+                if {${clangversion} >= 16} {
+                    #clang-16 and later have libc++ in a subdirectory
+                    set cxxsubdir "/libc++/"
+                }
+                reinplace "s|-Wl,-all_load|-Wl,-unexported_symbol,___muloti4 \
+                    ${prefix}/libexec/llvm-${clangversion}/lib/${cxxsubdir}libc++.a ${prefix}/libexec/llvm-${clangversion}/lib/${cxxsubdir}libc++abi.a -Wl,-all_load|g" \
+                    ${build.dir}/build.ninja
+            }
+        }
+    }
 }
 
 if {${subport} eq "lldb-${llvm_version}"} {
@@ -658,20 +670,6 @@ if {${subport} eq "clang-${llvm_version}"} {
     # Avoid requiring a bootstrap version of perl5 on 10.6.
     if {${os.major} >= 11} {
         default_variants    +analyzer
-    }
-
-    #from 10.6(i386,x86_64) to 10.14 (x86_64), clang-11 works well
-    #but is only able to build up to clang-20 with +analyzer.
-    #10.6 doesn't have any issues building up to clang-23 with mp-clang-11
-    #since the analyzer is disabled by default. however, it experiences
-    #clang-16/17 also fail. however the (now working) clang-19 builds properly.
-    #so we use that for clang-21+
-    if {${configure.build_arch} in [list i386, x86_64]} {
-        if {${os.platform} eq "darwin" && ${os.major} < 19} {
-            if {[variant_isset analyzer]} {
-                compiler.fallback   macports-clang-19
-            }
-        }
     }
 
     variant libstdcxx description {-stdlib=libstdc++_macports searches for MacPorts libstdc++} {
